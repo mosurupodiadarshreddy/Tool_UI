@@ -1,0 +1,106 @@
+.login-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+}
+
+.login-card {
+  width: 420px;
+  padding: 32px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.login-card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 38px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.login-card p {
+  text-align: center;
+  margin: 12px 0 24px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.login-card input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.login-card input:focus {
+  border-color: #22c55e;
+}
+
+.login-card button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+
+  border: none;
+  border-radius: 8px;
+
+  display: flex;
+  align-items: center;      /* vertical center */
+  justify-content: center;  /* horizontal center */
+  gap: 8px;
+
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Disabled button */
+.login-card button:disabled {
+  background: #d1d5db;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Enabled button */
+.login-card button:not(:disabled) {
+  background: #22c55e;
+  color: white;
+  cursor: pointer;
+}
+
+.login-card button:not(:disabled):hover {
+  background: #16a34a;
+}
+
+/* OTP input label */
+.login-card label {
+  display: block;
+  margin-top: 18px;
+  margin-bottom: 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Success and error messages */
+.login-card .status-message {
+  margin: 16px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* Success message */
+.login-card .status-message.success {
+  color: #16a34a;
+}
+
+/* Error message */
+.login-card .status-message.error {
+  color: #dc2626;
+}

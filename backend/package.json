@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/ai-projects": "^2.9.0",
+    "@azure/identity": "^4.14.0",
+    "@azure/storage-blob": "^12.34.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.16",
+    "openai": "^7.42.0",
+    "redis": "^6.3.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
