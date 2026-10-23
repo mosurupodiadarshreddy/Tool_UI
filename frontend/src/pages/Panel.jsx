@@ -1,3 +1,4 @@
+
 import AnswerPanel from "../components/Answer";
 import QuestionInputPanel from "../components/QuestionInputPanel";
 import SpeechToText from "../components/SpeechToText";
@@ -7,14 +8,13 @@ import Download from "../components/Download";
 
 import "../styles/Panel.css";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlay } from "react-icons/fa";
 import { AUTH_API } from "../constants/apiConstants";
 
 function Panel() {
   const navigate = useNavigate();
-
   const questionInputRef = useRef(null);
 
   const [interviewStarted, setInterviewStarted] = useState(false);
@@ -24,7 +24,12 @@ function Panel() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
+
+  // Current, unfinished speech segment.
   const [transcript, setTranscript] = useState("");
+
+  // Completed questions stay visible when the transcript clears.
+  const [questions, setQuestions] = useState([]);
 
   // Shared audio stream from ScreenShare.
   const [audioStream, setAudioStream] = useState(null);
@@ -44,6 +49,33 @@ function Panel() {
     return () => clearInterval(timer);
   }, [interviewStarted, timeLeft]);
 
+  // Stable callbacks prevent SpeechToText from restarting recognition
+  // on every Panel render.
+  const handleTranscript = useCallback((text) => {
+    setTranscript(text);
+  }, []);
+
+  const handleNewQuestion = useCallback((question) => {
+    setQuestions((previousQuestions) => {
+      // Prevent accidental duplicate insertion.
+      if (
+        previousQuestions.some(
+          (existingQuestion) => existingQuestion.id === question.id
+        )
+      ) {
+        return previousQuestions;
+      }
+
+      return [
+        ...previousQuestions,
+        {
+          ...question,
+          number: previousQuestions.length + 1,
+        },
+      ];
+    });
+  }, []);
+
   const handleLogout = () => {
     if (window.confirm("Are you sure to logout?")) {
       setAudioStream(null);
@@ -59,13 +91,13 @@ function Panel() {
     if (hours > 0) {
       return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
         2,
-        "0",
+        "0"
       )}:${String(seconds).padStart(2, "0")}`;
     }
 
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
       2,
-      "0",
+      "0"
     )}`;
   };
 
@@ -117,7 +149,7 @@ function Panel() {
 
   const handleNextAnswer = () => {
     setCurrentAnswerIndex((index) =>
-      Math.min(answerHistory.length - 1, index + 1),
+      Math.min(answerHistory.length - 1, index + 1)
     );
   };
 
@@ -148,7 +180,9 @@ function Panel() {
                   Start
                 </button>
               ) : (
-                <button className="timer-btn">⏱ {formatTime(timeLeft)}</button>
+                <button className="timer-btn">
+                  ⏱ {formatTime(timeLeft)}
+                </button>
               )}
 
               <ScreenShare onStreamChange={setAudioStream} />
@@ -193,17 +227,23 @@ function Panel() {
             <div className="question-section">
               <SpeechToText
                 audioStream={audioStream}
-                onTranscript={setTranscript}
+                onTranscript={handleTranscript}
+                onQuestion={handleNewQuestion}
               />
 
               <div className="transcript-content">
-                {transcript ? (
-                  <p>{transcript}</p>
-                ) : (
-                  <p>
-                    Audio capture test: spoken text will appear here after
-                    speech-to-text is connected.
+                {questions.map((question) => (
+                  <p key={question.id}>
+                    <strong>Q{question.number}:</strong> {question.text}
                   </p>
+                ))}
+
+                {transcript && (
+                  <p className="current-transcript">{transcript}</p>
+                )}
+
+                {questions.length === 0 && !transcript && (
+                  <p>Waiting for speech...</p>
                 )}
               </div>
             </div>

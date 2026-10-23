@@ -10,12 +10,25 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
   const pendingTextRef = useRef("");
   const questionCountRef = useRef(0);
 
+  // Keep the latest callbacks without restarting speech recognition.
+  const onTranscriptRef = useRef(onTranscript);
+  const onQuestionRef = useRef(onQuestion);
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
+
+  useEffect(() => {
+    onQuestionRef.current = onQuestion;
+  }, [onQuestion]);
+
   useEffect(() => {
     if (!audioStream) {
       setIsListening(false);
       setError("");
       pendingTextRef.current = "";
-      onTranscript?.("");
+      clearTimeout(silenceTimerRef.current);
+      onTranscriptRef.current?.("");
       return;
     }
 
@@ -23,6 +36,7 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
 
     if (!audioTrack || audioTrack.readyState !== "live") {
       setError("No active audio track. Check your screen-sharing audio.");
+      setIsListening(false);
       return;
     }
 
@@ -31,6 +45,7 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
 
     if (!SpeechRecognition) {
       setError("Speech recognition is not supported in this browser.");
+      setIsListening(false);
       return;
     }
 
@@ -50,9 +65,9 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
       clearTimeout(silenceTimerRef.current);
 
       const text = pendingTextRef.current.trim();
-
       if (!text) return;
 
+      // Clear only the current segment, not the saved question history.
       pendingTextRef.current = "";
       finalParts = [];
       interimText = "";
@@ -65,15 +80,20 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
         text: /[.!?]$/.test(text) ? text : `${text}?`,
       };
 
-      onQuestion?.(segment);
-      onTranscript?.("");
+      // Save the completed question in the parent component first.
+      onQuestionRef.current?.(segment);
+
+      // Clear only the temporary live transcript.
+      onTranscriptRef.current?.("");
     };
 
     const resetSilenceTimer = () => {
       clearTimeout(silenceTimerRef.current);
 
       silenceTimerRef.current = setTimeout(() => {
-        if (active) finalizeSegment();
+        if (active) {
+          finalizeSegment();
+        }
       }, 2500);
     };
 
@@ -101,18 +121,18 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
         }
       }
 
-      // Keep all finalized words and append the current interim phrase.
       pendingTextRef.current = [
         ...finalParts,
         interimText.trim(),
       ]
         .filter(Boolean)
         .join(" ")
-        .replace(/\s+/g, " ");
+        .replace(/\s+/g, " ")
+        .trim();
 
-      onTranscript?.(pendingTextRef.current);
+      onTranscriptRef.current?.(pendingTextRef.current);
 
-      if (pendingTextRef.current.trim()) {
+      if (pendingTextRef.current) {
         resetSilenceTimer();
       }
     };
@@ -131,13 +151,14 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
     };
 
     try {
-      // Audio-track input is not supported by every browser.
+      // Preserve your existing audio-track recognition approach.
       recognition.start(audioTrack);
     } catch (err) {
       console.error("Could not start speech recognition:", err);
       setError(
         "This browser may not support recognition from a shared audio track."
       );
+      setIsListening(false);
     }
 
     return () => {
@@ -155,9 +176,11 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
         // Recognition may already have stopped.
       }
 
-      recognitionRef.current = null;
+      if (recognitionRef.current === recognition) {
+        recognitionRef.current = null;
+      }
     };
-  }, [audioStream, onTranscript, onQuestion]);
+  }, [audioStream]);
 
   return (
     <div className="speech-to-text">
