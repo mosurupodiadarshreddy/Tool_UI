@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { FaDesktop } from "react-icons/fa";
+import "../styles/ScreenShare.css";
 
 function ScreenShare({ onStreamChange }) {
   const [isSharing, setIsSharing] = useState(false);
@@ -12,7 +13,10 @@ function ScreenShare({ onStreamChange }) {
     const stream = streamRef.current;
 
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
       streamRef.current = null;
     }
 
@@ -30,35 +34,30 @@ function ScreenShare({ onStreamChange }) {
 
       streamRef.current = stream;
 
-      const audioTracks = stream.getAudioTracks();
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
 
-      setIsSharing(true);
+      setIsSharing(Boolean(videoTrack?.readyState === "live"));
 
-      if (audioTracks.length > 0) {
-        const audioTrack = audioTracks[0];
-
-        setIsAudioActive(audioTrack.readyState === "live" && audioTrack.enabled);
-        onStreamChange?.(stream);
-
-        audioTrack.onended = () => {
-          setIsAudioActive(false);
-        };
-
-        audioTrack.onmute = () => {
-          setIsAudioActive(false);
-        };
-
-        audioTrack.onunmute = () => {
+      if (audioTrack) {
+        const updateAudioStatus = () => {
           setIsAudioActive(
-            audioTrack.readyState === "live" && audioTrack.enabled
+            audioTrack.readyState === "live" &&
+              audioTrack.enabled &&
+              !audioTrack.muted
           );
         };
+
+        updateAudioStatus();
+        onStreamChange?.(stream);
+
+        audioTrack.onended = updateAudioStatus;
+        audioTrack.onmute = updateAudioStatus;
+        audioTrack.onunmute = updateAudioStatus;
       } else {
         setIsAudioActive(false);
         onStreamChange?.(null);
       }
-
-      const videoTrack = stream.getVideoTracks()[0];
 
       if (videoTrack) {
         videoTrack.onended = stopSharing;
@@ -72,7 +71,11 @@ function ScreenShare({ onStreamChange }) {
 
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current?.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
+      streamRef.current = null;
     };
   }, []);
 
@@ -80,21 +83,21 @@ function ScreenShare({ onStreamChange }) {
     <div className="screen-share-control">
       <button
         type="button"
-        className="screen-share-btn"
-        onClick={isSharing ? stopSharing : startScreenShare}
-      >
-        <FaDesktop />
-        {isSharing ? "Stop Sharing" : "Share Screen"}
-      </button>
-
-      <span
-        className={`audio-indicator ${
-          isAudioActive ? "audio-active" : "audio-inactive"
+        className={`screen-share-btn ${
+          isSharing ? "sharing-active" : "sharing-inactive"
         }`}
-        title={isAudioActive ? "Audio track active" : "Audio track inactive"}
-        role="status"
-        aria-label={isAudioActive ? "Audio track active" : "Audio track inactive"}
-      />
+        onClick={isSharing ? stopSharing : startScreenShare}
+        title={
+          isSharing
+            ? isAudioActive
+              ? "Screen sharing active — audio available"
+              : "Screen sharing active — no audio"
+            : "Share screen"
+        }
+        aria-label={isSharing ? "Stop screen sharing" : "Share screen"}
+      >
+        <FaDesktop /> Screen
+      </button>
     </div>
   );
 }

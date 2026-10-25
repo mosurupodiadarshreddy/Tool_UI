@@ -2,14 +2,16 @@
 .question-list-container {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
+/* Scrollable list of detected speech questions */
 .question-list {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -17,8 +19,10 @@
   color: #ffffff;
   scrollbar-width: thin;
   scrollbar-color: #8b93a1 #343840;
+  box-sizing: border-box;
 }
 
+/* Individual detected question */
 .detected-question {
   display: flex;
   align-items: flex-start;
@@ -26,10 +30,13 @@
   padding: 12px;
   margin-bottom: 10px;
   background-color: #414650;
+  border: 1px solid transparent;
   border-radius: 8px;
   color: #ffffff;
   overflow-wrap: anywhere;
   line-height: 1.5;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
 .detected-question strong,
@@ -41,12 +48,26 @@
   flex-shrink: 0;
 }
 
+/* Selected question */
+.detected-question.selected-question {
+  border-color: #a2adea;
+  background-color: rgba(162, 173, 234, 0.12);
+}
+
+/* Keyboard focus */
+.detected-question:focus-visible {
+  outline: 2px solid #a2adea;
+  outline-offset: 2px;
+}
+
+/* Empty state */
 .empty-questions {
   padding: 8px;
   color: #ffffff;
   overflow-wrap: anywhere;
 }
 
+/* Question list scrollbar */
 .question-list::-webkit-scrollbar {
   width: 7px;
 }
@@ -58,4 +79,48 @@
 .question-list::-webkit-scrollbar-thumb {
   background: #8b93a1;
   border-radius: 6px;
+}
+
+/* Compact Create Answer button */
+.question-list-container > .action-btn {
+  display: block;
+  flex: 0 0 38px;
+  align-self: stretch;
+  width: calc(100% - 16px);
+  height: 38px;
+  min-height: 38px;
+  max-height: 38px;
+  margin: 8px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: 1;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Disabled while generating or when no question is selected */
+.question-list-container > .action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Smaller screens */
+@media (max-width: 768px) {
+  .question-list {
+    padding: 8px;
+  }
+
+  .detected-question {
+    padding: 8px;
+    margin-bottom: 8px;
+  }
+
+  .question-list-container > .action-btn {
+    width: calc(100% - 16px);
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
+  }
 }

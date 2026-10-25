@@ -1,0 +1,94 @@
+
+.screen-share-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.screen-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 38px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  color: #ffffff;
+  font-size: 17px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    filter 0.2s ease;
+}
+
+.screen-share-btn.sharing-inactive {
+  background-color: #ef4444;
+}
+
+.screen-share-btn.sharing-active {
+  background-color: #16a34a;
+}
+
+.screen-share-btn:hover {
+  filter: brightness(1.1);
+}
+
+.screen-share-btn:focus-visible {
+  outline: 2px solid #a2adea;
+  outline-offset: 2px;
+}
+
+.screen-share-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+
+.resume-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 112px;
+  min-width: 112px;
+  height: 38px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  position: relative;
+  vertical-align: middle;
+  transition: background-color 0.2s ease, filter 0.2s ease;
+}
+
+.resume-icon-btn svg {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.resume-icon-btn span {
+  flex-shrink: 0;
+}
+
+.resume-not-uploaded {
+  background-color: #ef4444;
+}
+
+.resume-uploaded {
+  background-color: #16a34a;
+  cursor: default;
+}
+
+.resume-icon-btn:hover {
+  filter: brightness(1.08);
+}
+

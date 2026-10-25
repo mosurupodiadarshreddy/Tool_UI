@@ -1,33 +1,51 @@
 
-import { useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
-function SpeechToText({ audioStream, onTranscript, onQuestion }) {
+const SpeechToText = forwardRef(function SpeechToText(
+  { audioStream, onTranscript },
+  ref
+) {
   const [error, setError] = useState("");
   const [isListening, setIsListening] = useState(false);
 
   const recognitionRef = useRef(null);
-  const silenceTimerRef = useRef(null);
   const pendingTextRef = useRef("");
-  const questionCountRef = useRef(0);
-
-  // Keep the latest callbacks without restarting speech recognition.
   const onTranscriptRef = useRef(onTranscript);
-  const onQuestionRef = useRef(onQuestion);
+
+  // The index of the first recognition result for the active question.
+  const questionStartIndexRef = useRef(0);
+  const latestResultCountRef = useRef(0);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
   }, [onTranscript]);
 
-  useEffect(() => {
-    onQuestionRef.current = onQuestion;
-  }, [onQuestion]);
+  useImperativeHandle(ref, () => ({
+    getCurrentTranscript() {
+      return pendingTextRef.current.trim();
+    },
+
+    clearCurrentTranscript() {
+      // Start the next question after all results received so far.
+      questionStartIndexRef.current = latestResultCountRef.current;
+      pendingTextRef.current = "";
+      onTranscriptRef.current?.("");
+    },
+  }));
 
   useEffect(() => {
     if (!audioStream) {
       setIsListening(false);
       setError("");
       pendingTextRef.current = "";
-      clearTimeout(silenceTimerRef.current);
+      questionStartIndexRef.current = 0;
+      latestResultCountRef.current = 0;
       onTranscriptRef.current?.("");
       return;
     }
@@ -58,44 +76,6 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
     recognition.maxAlternatives = 1;
 
     let active = true;
-    let finalParts = [];
-    let interimText = "";
-
-    const finalizeSegment = () => {
-      clearTimeout(silenceTimerRef.current);
-
-      const text = pendingTextRef.current.trim();
-      if (!text) return;
-
-      // Clear only the current segment, not the saved question history.
-      pendingTextRef.current = "";
-      finalParts = [];
-      interimText = "";
-
-      questionCountRef.current += 1;
-
-      const segment = {
-        id: `${Date.now()}-${questionCountRef.current}`,
-        number: questionCountRef.current,
-        text: /[.!?]$/.test(text) ? text : `${text}?`,
-      };
-
-      // Save the completed question in the parent component first.
-      onQuestionRef.current?.(segment);
-
-      // Clear only the temporary live transcript.
-      onTranscriptRef.current?.("");
-    };
-
-    const resetSilenceTimer = () => {
-      clearTimeout(silenceTimerRef.current);
-
-      silenceTimerRef.current = setTimeout(() => {
-        if (active) {
-          finalizeSegment();
-        }
-      }, 2500);
-    };
 
     recognition.onstart = () => {
       if (!active) return;
@@ -106,9 +86,25 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
     recognition.onresult = (event) => {
       if (!active) return;
 
-      interimText = "";
+      latestResultCountRef.current = event.results.length;
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      // If the browser resets its results list, reset our boundary too.
+      if (
+        questionStartIndexRef.current > event.results.length
+      ) {
+        questionStartIndexRef.current = 0;
+      }
+
+      const finalParts = [];
+      let interimText = "";
+
+      // Rebuild the active question from all results since its boundary.
+      // This preserves earlier finalized words across recognition updates.
+      for (
+        let i = questionStartIndexRef.current;
+        i < event.results.length;
+        i++
+      ) {
         const result = event.results[i];
         const recognizedText = result[0]?.transcript?.trim();
 
@@ -121,20 +117,14 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
         }
       }
 
-      pendingTextRef.current = [
-        ...finalParts,
-        interimText.trim(),
-      ]
+      const updatedText = [...finalParts, interimText.trim()]
         .filter(Boolean)
         .join(" ")
         .replace(/\s+/g, " ")
         .trim();
 
-      onTranscriptRef.current?.(pendingTextRef.current);
-
-      if (pendingTextRef.current) {
-        resetSilenceTimer();
-      }
+      pendingTextRef.current = updatedText;
+      onTranscriptRef.current?.(updatedText);
     };
 
     recognition.onerror = (event) => {
@@ -151,19 +141,16 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
     };
 
     try {
-      // Preserve your existing audio-track recognition approach.
+      // Preserving your current startup approach for this iteration.
       recognition.start(audioTrack);
     } catch (err) {
       console.error("Could not start speech recognition:", err);
-      setError(
-        "This browser may not support recognition from a shared audio track."
-      );
+      setError("Could not start speech recognition.");
       setIsListening(false);
     }
 
     return () => {
       active = false;
-      clearTimeout(silenceTimerRef.current);
 
       recognition.onresult = null;
       recognition.onend = null;
@@ -197,6 +184,6 @@ function SpeechToText({ audioStream, onTranscript, onQuestion }) {
       )}
     </div>
   );
-}
+});
 
 export default SpeechToText;

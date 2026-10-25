@@ -1,75 +1,81 @@
 
 import {
   useState,
-  useEffect,
   useImperativeHandle,
   forwardRef,
+  useCallback,
 } from "react";
 import "../styles/QuestionInputPanel.css";
 import { FaSearch } from "react-icons/fa";
 import { AUTH_API } from "../constants/apiConstants";
 
 const QuestionInputPanel = forwardRef(function QuestionInputPanel(
-  { onAnswerGenerated, onLoadingChange, transcript },
+  { onAnswerGenerated, onLoadingChange },
   ref
 ) {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Fill the input when new speech is recognized.
-  useEffect(() => {
-    if (transcript?.trim()) {
-      setQuestion(transcript);
-      setError("");
-    }
-  }, [transcript]);
+  const handleGenerateAnswer = useCallback(
+    async (questionText) => {
+      // An argument means the request came from a finalized audio question.
+      // No argument means it came from the manual textarea's search button.
+      const isAudioQuestion = typeof questionText === "string";
+      const questionToSend = (
+        isAudioQuestion ? questionText : question
+      ).trim();
 
-  const handleGenerateAnswer = async () => {
-    if (!question.trim() || isLoading) {
-      return;
-    }
-
-    setIsLoading(true);
-    onLoadingChange?.(true);
-    setError("");
-
-    try {
-      // Send the question to the existing AI answer API.
-      const response = await fetch(AUTH_API.AI_API_GENERATE_ANSWER, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ question: question.trim() }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to generate answer");
+      if (!questionToSend || isLoading) {
+        return;
       }
 
-      // Display the generated answer in the Answer Panel.
-      onAnswerGenerated({
-        question: result.question,
-        answer: result.answer,
-      });
+      setIsLoading(true);
+      onLoadingChange?.(true);
+      setError("");
 
-      setQuestion("");
-    } catch (error) {
-      console.error("AI answer generation failed:", error);
-      setError(error.message || "Unable to generate answer");
-    } finally {
-      setIsLoading(false);
-      onLoadingChange?.(false);
-    }
-  };
+      try {
+        const response = await fetch(AUTH_API.AI_API_GENERATE_ANSWER, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ question: questionToSend }),
+        });
 
-  // Allow the parent Create Answer button to trigger generation.
-  useImperativeHandle(ref, () => ({
-    generateAnswer: handleGenerateAnswer,
-  }));
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Failed to generate answer");
+        }
+
+        onAnswerGenerated({
+          question: result.question || questionToSend,
+          answer: result.answer,
+        });
+
+        // Clear the textarea only for a manually submitted question.
+        if (!isAudioQuestion) {
+          setQuestion("");
+        }
+      } catch (error) {
+        console.error("AI answer generation failed:", error);
+        setError(error.message || "Unable to generate answer");
+      } finally {
+        setIsLoading(false);
+        onLoadingChange?.(false);
+      }
+    },
+    [question, isLoading, onAnswerGenerated, onLoadingChange]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      generateAnswer: handleGenerateAnswer,
+    }),
+    [handleGenerateAnswer]
+  );
 
   return (
     <div className="question-input-container">
@@ -85,10 +91,11 @@ const QuestionInputPanel = forwardRef(function QuestionInputPanel(
         {error && <span className="error-message">{error}</span>}
 
         <button
+          type="button"
           className="generate-btn"
-          onClick={handleGenerateAnswer}
+          onClick={() => handleGenerateAnswer()}
           disabled={!question.trim() || isLoading}
-          aria-label="Generate answer"
+          aria-label="Generate answer for manually typed question"
         >
           <FaSearch />
         </button>
